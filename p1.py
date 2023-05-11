@@ -43,7 +43,7 @@ class Peer:
 
     def handle_connection(self, conn):
         while True:
-            serialized_model = conn.recv(5024)  # Adjust buffer size as per your requirement
+            serialized_model = conn.recv(8024)  # Adjust buffer size as per your requirement
             if not serialized_model:
                 self.connected_peers.remove(conn)
                 conn.close()
@@ -86,8 +86,8 @@ class Peer:
         
 # Peer 1
 if __name__ == '__main__':
-    peers = [("127.0.0.1", 8002), ("127.0.0.1", 8003), ("127.0.0.1", 8004)]
+    peers = [("10.113.6.132", 8002), ("10.113.17.139", 8003), ("10.113.6.77", 8004)]
     # peers = [("127.0.0.1", 8002)]
-    peer1 = Peer("127.0.0.1", 8001, peers)
+    peer1 = Peer("10.113.17.122", 8001, peers)
     threading.Thread(target=peer1.start).start()
                     
