@@ -1,34 +1,3 @@
-'''import socket
-import threading
-
-class Peer:
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((host, port))
-        self.receive_thread = threading.Thread(target=self.receive_data)
-        self.receive_thread.start()
-
-    def send_data(self, data):
-        self.socket.sendall(data.encode('utf-8'))
-
-    def receive_data(self):
-        while True:
-            data = self.socket.recv(1024)
-            if not data:
-                break
-            print(f"Received data: {data.decode('utf-8')}")
-
-    def start(self):
-        while True:
-            data = input("Enter data to send: ")
-            self.send_data(data)
-
-if __name__ == '__main__':
-    peer = Peer("127.0.0.1", 8001)
-    peer.start()
-'''
 import socket
 import threading
 import pickle
