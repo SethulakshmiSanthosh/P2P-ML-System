@@ -58,6 +58,8 @@ if __name__ == '__main__':
 '''
 import socket
 import threading
+import pickle
+from sklearn.ensemble import VotingClassifier
 
 class Peer:
     def __init__(self, host, port, peers):
@@ -68,11 +70,11 @@ class Peer:
         self.socket.bind((host, port))
         self.socket.listen(1)
         self.connected_peers = []
-        self.receive_thread = threading.Thread(target=self.receive_data)
+        self.receive_thread = threading.Thread(target=self.receive_model)
         self.receive_thread.start()
 
-        self.data_lock = threading.Lock()
-        self.global_data = "init data"
+        self.model_lock = threading.Lock()
+        self.global_model = None
 
     def connect_to_peers(self):
         for peer in self.peers:
@@ -83,46 +85,61 @@ class Peer:
                     self.connected_peers.append(peer_socket)
                     print(f"Connected to peer: {peer}")
                 except ConnectionRefusedError:
-                    print(f"Connection to peer {peer} refused")
                     self.connect_to_peers()
 
-    def send_data(self, data):
+    def send_model(self, model):
+        serialized_model = pickle.dumps(model)
         for peer in self.connected_peers:
-            peer.sendall(data.encode('utf-8'))
+            peer.sendall(serialized_model)
 
-    def receive_data(self):
+    def receive_model(self):
         while True:
             conn, addr = self.socket.accept()
-            print(f"Connected by {addr}")
             self.connected_peers.append(conn)
             threading.Thread(target=self.handle_connection, args=(conn,)).start()
 
     def handle_connection(self, conn):
         while True:
-            data = conn.recv(1024)
-            if not data:
+            serialized_model = conn.recv(5024)  # Adjust buffer size as per your requirement
+            if not serialized_model:
                 self.connected_peers.remove(conn)
                 conn.close()
                 break
-            # self.update_global_data(data.decode('utf-8'))
-            self.update_global_data(data)
-            print("Received data from a peer")
-            # data = input("Enter data to send: ")
-            # # self.update_global_data(data.decode('utf-8'))
-            # self.update_global_data(data)
-            # self.send_data(data)
+            received_model = pickle.loads(serialized_model)
+            self.update_global_model(received_model)
+            print("Received model from a peer")
 
-    def update_global_data(self, new_data):
-        with self.data_lock:
-            self.global_data = new_data
-            print(f"Global data updated: {self.global_data}")
+    def update_global_model(self, received_model):
+        with self.model_lock:
+            if self.global_model is None:
+                self.global_model = received_model
+            else:
+                self.global_model = VotingClassifier(estimators=[('self.global_model', self.global_model), ('recieved_model', self.receive_model)], voting='hard')
+                # self.global_model = (self.global_model + received_model) / 2
+            print("Global model updated")
 
     def start(self):
         self.connect_to_peers()
-        while True:
-            data = input("Enter data to send: ")
-            self.update_global_data(data.encode('utf-8'))
-            self.send_data(data)
+        t=5
+        while (t>0):
+            import pandas as pd
+            import numpy as np
+            import os
+            from sklearn.naive_bayes import GaussianNB
+            from sklearn.model_selection import train_test_split
+            Data = pd.read_csv("./wine_dataset_p1.csv")
+            Data["style"] = np.where(Data["style"] == "white", 1, 0)
+            # feature - target
+            x = Data.drop(["style"], axis = 1)
+            y = Data["style"]
+            # train - test
+            x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.33, random_state = 45)
+            Model = GaussianNB()
+            Model.fit(x_train, y_train)
+            local_model = Model
+            self.update_global_model(local_model)
+            self.send_model(local_model)
+            t=t-1
         
 # Peer 1
 if __name__ == '__main__':
